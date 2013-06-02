@@ -9,7 +9,8 @@ defmodule Lexthink.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [mod: { Lexthink, [] }]
+    [ mod: { Lexthink, [] },
+      env: [{:timeout, 30 * 1000}] ]
   end
 
   # Returns the list of dependencies in the format:
