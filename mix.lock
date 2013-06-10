@@ -1,0 +1,2 @@
+[ "meck": {:git,"git://github.com/eproxus/meck.git","161e240166a0d20e9ffa2be5d0bfa6a981f12aef",[]},
+  "protobuffs": {:git,"git://github.com/basho/erlang_protobuffs.git","8a42ff0f90893ae91bbf4ff80ad2cf00dd889da0",[]} ]

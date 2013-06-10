@@ -1,3 +1,5 @@
-/ebin
-/deps
+ebin
+deps
+src
+lib/ql2.ex
 erl_crash.dump
