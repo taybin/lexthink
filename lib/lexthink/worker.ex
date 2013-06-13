@@ -3,7 +3,7 @@ defmodule Lexthink.Worker do
 
   defrecord State, socket: nil, database: nil, token: 1
 
-  defmacrop __RETHINKDB_VERSION__, do: 16#3f61ba36  # magic number from ql2.proto
+  defp __RETHINKDB_VERSION__, do: 0x3f61ba36 # 3f61ba36 magic number from ql2.proto
 
   @spec start_link(any, list) :: any
   def start_link(ref, opts) do
@@ -17,7 +17,7 @@ defmodule Lexthink.Worker do
       :gen_server.cast(pid, {:use, name})
   end
 
-  #@spec query(pid, :term) :: 
+  #@spec query(pid, :term) ::
   def query(pid, query) do
       timeout = :application.get_env(:lexthink, :timeout, 30000)
       :gen_server.call(pid, {:query, query}, timeout)
@@ -88,7 +88,7 @@ defmodule Lexthink.Worker do
       {:ok, :ql2_util.datum_value(datum)}
   end
   defp handle_response(:response[type: 'SUCCESS_SEQUENCE', response: data]) do
-      {:ok, lc d inlist data, do: :ql2_util.datum_value}
+      {:ok, lc d inlist data, do: :ql2_util.datum_value(d)}
   end
   defp handle_response(:response[type: 'SUCCESS_PARTIAL', response: [datum]]) do
       {:ok, :ql2_util.datum_value(datum)}

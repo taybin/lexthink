@@ -57,7 +57,7 @@ defmodule Lexthink.Server do
   end
 
   # Callbacks
-  @spec init([]) :: {:ok, :state}
+  @spec init([]) :: {:ok, State}
   def init([]) do
     {:ok, State.new}
   end
