@@ -1,9 +1,9 @@
 defmodule Lexthink.Worker do
   use GenServer.Behaviour
 
-  defrecord State, socket: nil, database: nil, token: 1
+  defrecordp State, socket: nil, database: nil, token: 1
 
-  defp __RETHINKDB_VERSION__, do: 0x3f61ba36 # 3f61ba36 magic number from ql2.proto
+  defp __RETHINKDB_VERSION__, do: 0x723081e1 # v_02 magic number from ql2.proto
 
   @spec start_link(any, list) :: any
   def start_link(ref, opts) do
@@ -28,9 +28,10 @@ defmodule Lexthink.Worker do
       host = Keyword.get(opts, :address, {127,0,0,1})
       port = Keyword.get(opts, :port, 28015)
       database = Keyword.get(opts, :database, "test")
-      {:ok, sock} = :gen_tcp.connect(host, port, [:binary, {:packet, 0}, {:active, :false}])
-      :ok = :gen_tcp.send(sock, :binary.encode_unsigned(__RETHINKDB_VERSION__, :little))
-      state = State.new(socket: sock, database: database)
+      auth_key = Keyword.get(opts, :auth_key, "")
+      {:ok, socket} = :gen_tcp.connect(host, port, [:binary, {:packet, 0}, {:active, :false}])
+      :ok = login(auth_key, socket)
+      state = State.new(socket: socket, database: database)
       {:ok, state}
   end
 
@@ -105,5 +106,39 @@ defmodule Lexthink.Worker do
   defp handle_response(:response[type: 'RUNTIME_ERROR', response: [datum]] = response) do
       errorMsg = :ql2_util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
+  end
+
+  @spec login(binary, port) :: :ok | {:error, binary}
+  defp login(auth_key, socket) do
+      key_length = iolist_size(auth_key)
+      :ok = :gen_tcp.send(socket, :binary.encode_unsigned(__RETHINKDB_VERSION__, :little))
+      :ok = :gen_tcp.send(socket, [<<key_length :: [size(32), :little]>>, auth_key])
+      {:ok, response} = read_until_null(socket)
+      case response == <<"SUCCESS",0>> do
+          :true -> :ok;
+          :false ->
+              :io.fwrite("Error: ~s~n", [response])
+              {:error, response}
+      end
+  end
+
+  @spec read_until_null(port) :: {:ok, binary}
+  defp read_until_null(socket) do
+    read_until_null(socket, [])
+  end
+
+  @spec read_until_null(port, list) :: {:ok, binary}
+  defp read_until_null(socket, acc) do
+    {:ok, response} = :gen_tcp.recv(socket, 0)
+    result = [acc, response]
+    case is_null_terminated(response) do
+      :true -> {:ok, iolist_to_binary(result)}
+      :false -> read_until_null(socket, result)
+    end
+  end
+
+  @spec is_null_terminated(binary) :: boolean
+  defp is_null_terminated(b) do
+      :binary.at(b, iolist_size(b) - 1) == 0
   end
 end

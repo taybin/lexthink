@@ -18,6 +18,7 @@ defmodule Lexthink.Mixfile do
   # { :foobar, "0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
     [
+    { :mix_protobuffs, %r{.*}, git: "git://github.com/taybin/mix_protobuffs.git", branch: "test_branch"},
     { :meck, "0.7.2", git: "git://github.com/eproxus/meck.git" },
     { :protobuffs, "0.8.0", git: "git://github.com/basho/erlang_protobuffs.git" }
     ]
