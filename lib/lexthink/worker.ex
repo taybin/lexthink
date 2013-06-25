@@ -1,7 +1,7 @@
 defmodule Lexthink.Worker do
   use GenServer.Behaviour
 
-  defrecordp State, socket: nil, database: nil, token: 1
+  defrecord State, socket: nil, database: nil, token: 1
 
   defp __RETHINKDB_VERSION__, do: 0x723081e1 # v_02 magic number from ql2.proto
 
@@ -23,7 +23,7 @@ defmodule Lexthink.Worker do
       :gen_server.call(pid, {:query, query}, timeout)
   end
 
-  #-spec init([[{atom, any()}]]) -> {ok, #state{}}.
+  @spec init([{atom, any}]) :: {:ok, tuple}
   def init([opts]) do
       host = Keyword.get(opts, :address, {127,0,0,1})
       port = Keyword.get(opts, :port, 28015)
@@ -40,7 +40,7 @@ defmodule Lexthink.Worker do
       query = :query.new(type: 'START',
                          query: term,
                          token: state.token,
-                         global_optargs: :ql2_util.global_db(state.database))
+                         global_optargs: Ql2.Util.global_db(state.database))
       reply = send_and_recv(query, state.socket)
       {:reply, reply, state.token(state.token + 1)}
   end
@@ -86,25 +86,25 @@ defmodule Lexthink.Worker do
 
   #-spec handle_response(#response{}) -> lethink:response().
   defp handle_response(:response[type: 'SUCCESS_ATOM', response: [datum]]) do
-      {:ok, :ql2_util.datum_value(datum)}
+      {:ok, Ql2.Util.datum_value(datum)}
   end
   defp handle_response(:response[type: 'SUCCESS_SEQUENCE', response: data]) do
-      {:ok, lc d inlist data, do: :ql2_util.datum_value(d)}
+      {:ok, lc d inlist data, do: Ql2.Util.datum_value(d)}
   end
   defp handle_response(:response[type: 'SUCCESS_PARTIAL', response: [datum]]) do
-      {:ok, :ql2_util.datum_value(datum)}
+      {:ok, Ql2.Util.datum_value(datum)}
   end
 
   defp handle_response(:response[type: 'CLIENT_ERROR', response: [datum]] = response) do
-      errorMsg = :ql2_util.datum_value(datum)
+      errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
   defp handle_response(:response[type: 'COMPILE_ERROR', response: [datum]] = response) do
-      errorMsg = :ql2_util.datum_value(datum)
+      errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
   defp handle_response(:response[type: 'RUNTIME_ERROR', response: [datum]] = response) do
-      errorMsg = :ql2_util.datum_value(datum)
+      errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
 
@@ -112,7 +112,7 @@ defmodule Lexthink.Worker do
   defp login(auth_key, socket) do
       key_length = iolist_size(auth_key)
       :ok = :gen_tcp.send(socket, :binary.encode_unsigned(__RETHINKDB_VERSION__, :little))
-      :ok = :gen_tcp.send(socket, [<<key_length :: [size(32), :little]>>, auth_key])
+      :ok = :gen_tcp.send(socket, [<<key_length :: [size(32), little]>>, auth_key])
       {:ok, response} = read_until_null(socket)
       case response == <<"SUCCESS",0>> do
           :true -> :ok;

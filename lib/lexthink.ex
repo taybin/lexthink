@@ -3,14 +3,8 @@ defmodule Lexthink do
 
   @type json_term() :: :null | boolean | number | binary | HashDict | [json_term]
 
-  @spec start() :: :ok
-  def start() do
-    :ok = Application.Behavior.start(Lexthink)
-  end
-
-  @spec stop() :: :ok
-  def stop() do
-      :ok = :application.stop(Lexthink)
+  def start(_type, _args) do
+    Lexthink.Supervisor.start_link()
   end
 
   #@equiv add_pool(any(), pos_integer(), [{address, "localhost"}, {port, 28015}, {database, <<"test">>}])
@@ -24,7 +18,7 @@ defmodule Lexthink do
   """
   #@spec add_pool(any, pos_integer, [connect_options()]) -> ok.
   def add_pool(ref, n_workers, opts) when n_workers > 0 do
-      :ok = Lethink.Server.add_pool(ref)
+      :ok = Lexthink.Server.add_pool(ref)
       {:ok, sup_pid} = :supervisor.start_child(Lexthink.Supervisor,
           {{Lexthink.Worker.Supervisor, ref}, {Lexthink.Worker.Supervisor, :start_link, []},
               :permanent, 5000, :supervisor, [Lexthink.Worker.Supervisor]})
@@ -54,7 +48,7 @@ defmodule Lexthink do
 
   @spec run(:term, any) :: :response
   def run(term, ref) do
-    worker_pid = Lexthink.Servier.get_worker(ref)
+    worker_pid = Lexthink.Server.get_worker(ref)
     Lexthink.Worker.query(worker_pid, term)
   end
 

@@ -74,8 +74,8 @@ defmodule Lexthink.Server do
 
   @spec handle_cast(any, :state) :: {:noreply, :state}
   def handle_cast({:add_pool, ref}, state) do
-    :true = :ets.insert_new(__MODULE__, {{state.pool, Ref}, []})
-    {:noreply, state.pools([ref | state.pool])}
+    :true = :ets.insert_new(__MODULE__, {{:pool, ref}, []})
+    {:noreply, state.pools([ref | state.pools])}
   end
 
   def handle_cast({:remove_pool, ref}, state) do
