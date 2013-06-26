@@ -37,7 +37,7 @@ defmodule Lexthink.Worker do
 
   #-spec handle_call(tuple(), pid(), #state{}) -> {reply, ok | lethink:response(), #state{}}.
   def handle_call({:query, term}, _from, state) do
-      query = :query.new(type: 'START',
+      query = :query.new(type: :'START',
                          query: term,
                          token: state.token,
                          global_optargs: Ql2.Util.global_db(state.database))
@@ -85,25 +85,25 @@ defmodule Lexthink.Worker do
   end
 
   #-spec handle_response(#response{}) -> lethink:response().
-  defp handle_response(:response[type: 'SUCCESS_ATOM', response: [datum]]) do
+  defp handle_response(:response[type: :'SUCCESS_ATOM', response: [datum]]) do
       {:ok, Ql2.Util.datum_value(datum)}
   end
-  defp handle_response(:response[type: 'SUCCESS_SEQUENCE', response: data]) do
+  defp handle_response(:response[type: :'SUCCESS_SEQUENCE', response: data]) do
       {:ok, lc d inlist data, do: Ql2.Util.datum_value(d)}
   end
-  defp handle_response(:response[type: 'SUCCESS_PARTIAL', response: [datum]]) do
+  defp handle_response(:response[type: :'SUCCESS_PARTIAL', response: [datum]]) do
       {:ok, Ql2.Util.datum_value(datum)}
   end
 
-  defp handle_response(:response[type: 'CLIENT_ERROR', response: [datum]] = response) do
+  defp handle_response(:response[type: :'CLIENT_ERROR', response: [datum]] = response) do
       errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
-  defp handle_response(:response[type: 'COMPILE_ERROR', response: [datum]] = response) do
+  defp handle_response(:response[type: :'COMPILE_ERROR', response: [datum]] = response) do
       errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
-  defp handle_response(:response[type: 'RUNTIME_ERROR', response: [datum]] = response) do
+  defp handle_response(:response[type: :'RUNTIME_ERROR', response: [datum]] = response) do
       errorMsg = Ql2.Util.datum_value(datum)
       {:error, errorMsg, response.type, response.backtrace}
   end
