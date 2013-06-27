@@ -1,5 +1,5 @@
 defmodule Lexthink.AST do
-  @typep json_term :: :null | boolean | number | binary | HashDict | [json_term]
+  #@typep json_term :: :null | boolean | number | binary | HashDict.t | [json_term]
   @typep ql_term :: tuple
 
   @spec db_create(binary) :: ql_term
@@ -16,7 +16,7 @@ defmodule Lexthink.AST do
     table_create(name, [])
   end
 
-  @spec table_create(binary | ql_term, Keyword | binary) :: ql_term
+  @spec table_create(binary | ql_term, Keyword.t | binary) :: ql_term
   def table_create(name, options) when is_binary(name) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE_CREATE', args: expr(name), optargs: optargs)
@@ -26,7 +26,7 @@ defmodule Lexthink.AST do
     table_create(db, name, [])
   end
 
-  @spec table_create(ql_term, binary, Keyword) :: ql_term
+  @spec table_create(ql_term, binary, Keyword.t) :: ql_term
   def table_create(:term = db, name, options) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE_CREATE', args: [db, expr(name)], optargs: optargs)
@@ -59,7 +59,7 @@ defmodule Lexthink.AST do
   @spec table(binary) :: ql_term
   def table(name), do: table(name, [])
 
-  @spec table(ql_term | binary, binary | Keyword) :: ql_term
+  @spec table(ql_term | binary, binary | Keyword.t) :: ql_term
   def table(:term = db, name), do: table(db, name, [])
 
   def table(name, options) when is_binary(name) do
@@ -67,13 +67,13 @@ defmodule Lexthink.AST do
     :term.new(type: :'TABLE', args: expr(name), optargs: optargs)
   end
 
-  @spec table(ql_term, binary, Keyword) :: ql_term
+  @spec table(ql_term, binary, Keyword.t) :: ql_term
   def table(:term = db, name, options) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE', args: [db, expr(name)], optargs: optargs)
   end
 
-  @spec insert(ql_term, HashDict, Keyword) :: ql_term
+  @spec insert(ql_term, Dict.t, Keyword.t) :: ql_term
   def insert(:term = table, data, options // []) do
     args = [table, lc d inlist data, do: expr(d)]
     optargs = lc opt inlist options, do: option_term(opt)
@@ -85,7 +85,7 @@ defmodule Lexthink.AST do
     :term.new(type: :'GET', args: [table, expr(key)])
   end
 
-  @spec update(ql_term, HashDict | fun) :: ql_term
+  @spec update(ql_term, Dict.t | fun) :: ql_term
   def update(selection, data) do
     :term.new(type: :'UPDATE', args: [selection, func_wrap(data)])
   end
@@ -170,7 +170,7 @@ defmodule Lexthink.AST do
     :term.new(type: :'NOT', args: [term])
   end
 
-  @spec expr(HashDict | {any, any} | list | fun | ql_term) :: ql_term
+  @spec expr(Dict.t | {any, any} | list | fun | ql_term) :: ql_term
   def expr(item) when is_record(item, :term), do: Item
   def expr(item) when is_record(item, :term_assocpair), do: Item
   def expr(doc) when is_record(doc, HashDict) do
