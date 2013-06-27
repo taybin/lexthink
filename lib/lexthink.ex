@@ -1,12 +1,6 @@
 defmodule Lexthink do
   use Application.Behaviour
 
-  @type json_term() :: :null | boolean | number | binary | HashDict | [json_term]
-
-  def start(_type, _args) do
-    Lexthink.Supervisor.start_link()
-  end
-
   #@equiv add_pool(any(), pos_integer(), [{address, "localhost"}, {port, 28015}, {database, <<"test">>}])
   @spec add_pool(any, pos_integer) :: :ok
   def add_pool(ref, n_workers) when n_workers > 0 do
@@ -40,7 +34,7 @@ defmodule Lexthink do
   @doc """
   Change all connections in pool to use database for queries.
   """
-  @spec use(any, binary) :: :ok
+  @spec use(any, binary) :: list
   def use(ref, db) when is_binary(db) do
       worker_pids = Lexthink.Server.get_all_workers(ref)
       Enum.map(worker_pids, fn pid -> Lexthink.Worker.use(pid, db) end)
@@ -52,6 +46,9 @@ defmodule Lexthink do
     Lexthink.Worker.query(worker_pid, term)
   end
 
+  def start do
+    Application.Behaviour.start(:lexthink)
+  end
 
   # See http://elixir-lang.org/docs/stable/Application.Behaviour.html
   # for more information on OTP Applications
