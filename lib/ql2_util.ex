@@ -1,6 +1,8 @@
 defmodule Ql2.Util do
 
-  @spec datum_value(:datum) :: Lexthink.json_term
+  @typep json_term :: :null | boolean | number | binary | Dict.t | [json_term]
+
+  @spec datum_value(:datum.t) :: json_term
   def datum_value(:datum[ type: :'R_NULL' ]) do
     :null
   end
@@ -21,13 +23,13 @@ defmodule Ql2.Util do
     HashDict.new(keyvalues)
   end
 
-  @spec global_db(binary) :: :query_assocpair
+  @spec global_db(binary) :: :query_assocpair.t
   def global_db(value) do
     :query_assocpair.new(key: "db",
                          val: :term.new(type: :'DB', args: Lexthink.AST.expr(value)))
   end
 
-  @spec datum_assocpair_tuple(:datum_assocpair) :: {:binary, :any}
+  @spec datum_assocpair_tuple(:datum_assocpair.t) :: {binary, any}
   defp datum_assocpair_tuple(datum_assocpair) do
       {list_to_binary(datum_assocpair.key), datum_value(datum_assocpair.val)}
   end

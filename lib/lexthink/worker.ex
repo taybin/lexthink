@@ -17,14 +17,14 @@ defmodule Lexthink.Worker do
       :gen_server.cast(pid, {:use, name})
   end
 
-  #@spec query(pid, :term) ::
+  @spec query(pid, :term.t) :: Lexthink.response
   def query(pid, query) do
       timeout = :application.get_env(:lexthink, :timeout, 30000)
       :gen_server.call(pid, {:query, query}, timeout)
   end
 
-  @spec init([{atom, any}]) :: {:ok, tuple}
-  def init([opts]) do
+  @spec init(Keyword.t) :: {:ok, State.t}
+  def init(opts) do
       host = Keyword.get(opts, :address, {127,0,0,1})
       port = Keyword.get(opts, :port, 28015)
       database = Keyword.get(opts, :database, "test")
@@ -35,7 +35,7 @@ defmodule Lexthink.Worker do
       {:ok, state}
   end
 
-  #-spec handle_call(tuple(), pid(), #state{}) -> {reply, ok | lethink:response(), #state{}}.
+  @spec handle_call(tuple, any, State.t) :: {:reply, :ok | Lexthink.response, :State.t}
   def handle_call({:query, term}, _from, state) do
       query = :query.new(type: :'START',
                          query: term,
@@ -45,46 +45,46 @@ defmodule Lexthink.Worker do
       {:reply, reply, state.token(state.token + 1)}
   end
 
-  #-spec handle_cast(any(), #state{}) -> {noreply, #state{}}.
+  @spec handle_cast(any, State.t) :: {:noreply, State.t}
   def handle_cast({:use, name}, state) do
       {:noreply, state.database(name)}
   end
 
-  #-spec handle_info(any(), #state{}) -> {noreply, #state{}}.
+  @spec handle_info(any, State.t) :: {:noreply, State.t}
   def handle_info(info, state) do
       IO.write("Info: #{info}")
       {:noreply, state}
   end
 
-  #-spec terminate(any(), #state{}) -> ok.
+  @spec terminate(any, State.t) :: :ok
   def terminate(reason, state) do
       IO.write("terminating: #{reason}")
       :gen_tcp.close(state.socket)
       :ok
   end
 
-#-spec send_and_recv(#query{}, port()) -> lethink:response().
+  @spec send_and_recv(:query.t, port) :: Lexthink.response
   defp send_and_recv(query, socket) do
-      send(query, socket)
+      :ok = send(query, socket)
       response = recv(socket)
       handle_response(Ql2.decode_response(response))
   end
 
-  #-spec send(#query{}, port()) -> any().
+  @spec send(:query.t, port) :: :ok | {:error, atom}
   defp send(query, socket) do
       iolist = Ql2.encode_query(query)
       length = iolist_size(iolist)
       :gen_tcp.send(socket, [<<length :: [size(32), little]>>, iolist])
   end
 
-  #-spec recv(port()) -> any().
+  @spec recv(port) :: any
   defp recv(socket) do
       {:ok, responseLength} = :gen_tcp.recv(socket, 4)
       {:ok, response} = :gen_tcp.recv(socket, :binary.decode_unsigned(responseLength, :little))
       response
   end
 
-  #-spec handle_response(#response{}) -> lethink:response().
+  @spec handle_response(:response.t) :: Lexthink.response
   defp handle_response(:response[type: :'SUCCESS_ATOM', response: [datum]]) do
       {:ok, Ql2.Util.datum_value(datum)}
   end

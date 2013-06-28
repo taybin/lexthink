@@ -1,22 +1,22 @@
 defmodule Lexthink.AST do
-  #@typep json_term :: :null | boolean | number | binary | HashDict.t | [json_term]
-  @typep ql_term :: tuple
+  @typep datum_arg :: :null | boolean | number | binary
+  @typep expr_arg :: Dict.t | {any, any} | [expr_arg] | fun | :term.t | :term_assocpair.t | datum_arg
 
-  @spec db_create(binary) :: ql_term
+  @spec db_create(binary) :: :term.t
   def db_create(name), do: :term.new(type: :'DB_CREATE', args: expr(name))
 
-  @spec db_drop(binary) :: ql_term
+  @spec db_drop(binary) :: :term.t
   def db_drop(name), do: :term.new(type: :'DB_DROP', args: expr(name))
 
-  @spec db_list() :: ql_term
+  @spec db_list() :: :term.t
   def db_list(), do: :term.new(type: :'DB_LIST')
 
-  @spec table_create(binary) :: ql_term
+  @spec table_create(binary) :: :term.t
   def table_create(name) when is_binary(name) do
     table_create(name, [])
   end
 
-  @spec table_create(binary | ql_term, Keyword.t | binary) :: ql_term
+  @spec table_create(binary | :term.t, Keyword.t | binary) :: :term.t
   def table_create(name, options) when is_binary(name) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE_CREATE', args: expr(name), optargs: optargs)
@@ -26,165 +26,165 @@ defmodule Lexthink.AST do
     table_create(db, name, [])
   end
 
-  @spec table_create(ql_term, binary, Keyword.t) :: ql_term
-  def table_create(:term = db, name, options) do
+  @spec table_create(:term.t, binary, Keyword.t) :: :term.t
+  def table_create(db, name, options) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE_CREATE', args: [db, expr(name)], optargs: optargs)
   end
 
-  @spec table_drop(binary) :: ql_term
+  @spec table_drop(binary) :: :term.t
   def table_drop(name) do
     :term.new(type: :'TABLE_DROP', args: expr(name))
   end
 
-  @spec table_drop(ql_term, binary) :: ql_term
-  def table_drop(:term = db, name) do
+  @spec table_drop(:term.t, binary) :: :term.t
+  def table_drop(db, name) do
     :term.new(type: :'TABLE_DROP', args: [db, expr(name)])
   end
 
-  @spec table_list() :: ql_term
+  @spec table_list() :: :term.t
   def table_list(), do: :term.new(type: :'TABLE_LIST')
 
-  @spec table_list(ql_term) :: ql_term
-  def table_list(:term = db) do
+  @spec table_list(:term.t) :: :term.t
+  def table_list(db) do
     :term.new(type: :'TABLE_LIST', args: db)
   end
 
   #%% @doc Specify a DB.  Must be first operation in query list
   #%% Optional if a default database has been specified via
   #%% @see lethink:use/2
-  @spec db(binary) :: ql_term
+  @spec db(binary) :: :term.t
   def db(name), do: :term.new(type: :'DB', args: expr(name))
 
-  @spec table(binary) :: ql_term
+  @spec table(binary) :: :term.t
   def table(name), do: table(name, [])
 
-  @spec table(ql_term | binary, binary | Keyword.t) :: ql_term
-  def table(:term = db, name), do: table(db, name, [])
+  @spec table(:term.t | binary, binary | Keyword.t) :: :term.t
+  def table(db, name) when is_record(db, :term), do: table(db, name, [])
 
   def table(name, options) when is_binary(name) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE', args: expr(name), optargs: optargs)
   end
 
-  @spec table(ql_term, binary, Keyword.t) :: ql_term
-  def table(:term = db, name, options) do
+  @spec table(:term.t, binary, Keyword.t) :: :term.t
+  def table(db, name, options) do
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'TABLE', args: [db, expr(name)], optargs: optargs)
   end
 
-  @spec insert(ql_term, Dict.t, Keyword.t) :: ql_term
-  def insert(:term = table, data, options // []) do
+  @spec insert(:term.t, Dict.t, Keyword.t) :: :term.t
+  def insert(table, data, options // []) when is_record(table, :term) do
     args = [table, lc d inlist data, do: expr(d)]
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'INSERT', args: args, optargs: optargs)
   end
 
-  @spec get(binary | number, ql_term) :: ql_term
-  def get(:term = table, key) when is_binary(key) or is_number(key) do
+  @spec get(:term.t, binary | number) :: :term.t
+  def get(table, key) when is_record(table, :term) and (is_binary(key) or is_number(key)) do
     :term.new(type: :'GET', args: [table, expr(key)])
   end
 
-  @spec update(ql_term, Dict.t | fun) :: ql_term
+  @spec update(:term.t, Dict.t | fun) :: :term.t
   def update(selection, data) do
     :term.new(type: :'UPDATE', args: [selection, func_wrap(data)])
   end
 
-  @spec row() :: ql_term
+  @spec row() :: :term.t
   def row(), do: :term.new(type: :'IMPLICIT_VAR')
 
-  @spec getattr(ql_term, binary) :: ql_term
+  @spec getattr(:term.t, binary) :: :term.t
   def getattr(term, attr) do
     term.new(type: :'GETATTR', args: [term, expr(attr)])
   end
 
   #%% Math and Logic Operations
 
-  @spec add(ql_term, number | binary) :: ql_term
+  @spec add(:term.t, number | binary) :: :term.t
   def add(term, value) do
     :term.new(type: :'ADD', args: [term, expr(value)])
   end
 
-  @spec sub(ql_term, number) :: ql_term
+  @spec sub(:term.t, number) :: :term.t
   def sub(term, value) do
     :term.new(type: :'SUB', args: [term, expr(value)])
   end
 
-  @spec mul(tuple, number) :: tuple
-  def mul(:term = ql_term, value) do
-    :term.new(type: :'MUL', args: [ql_term, expr(value)])
+  @spec mul(:term.t, number) :: :term.t
+  def mul(term, value) do
+    :term.new(type: :'MUL', args: [term, expr(value)])
   end
 
-  @spec div(ql_term, number) :: ql_term
+  @spec div(:term.t, number) :: :term.t
   def div(term, value) do
     :term.new(type: :'DIV', args: [term, expr(value)])
   end
 
-  @spec mod(ql_term, number) :: ql_term
+  @spec mod(:term.t, number) :: :term.t
   def mod(term, value) do
     :term.new(type: :'MOD', args: [term, expr(value)])
   end
 
-  @spec and_(ql_term, number) :: ql_term
+  @spec and_(:term.t, number) :: :term.t
   def and_(term, value) do
     :term.new(type: :'AND', args: [term, expr(value)])
   end
 
-  @spec or_(ql_term, number) :: ql_term
+  @spec or_(:term.t, number) :: :term.t
   def or_(term, value) do
     :term.new(type: :'OR', args: [term, expr(value)])
   end
 
-  @spec eq(ql_term, number) :: ql_term
+  @spec eq(:term.t, number) :: :term.t
   def eq(term, value) do
     :term.new(type: :'EQ', args: [term, expr(value)])
   end
 
-  @spec ne(ql_term, number) :: ql_term
+  @spec ne(:term.t, number) :: :term.t
   def ne(term, value) do
     :term.new(type: :'NE', args: [term, expr(value)])
   end
 
-  @spec gt(ql_term, number) :: ql_term
+  @spec gt(:term.t, number) :: :term.t
   def gt(term, value) do
     :term.new(type: :'GT', args: [term, expr(value)])
   end
 
-  @spec ge(ql_term, number) :: ql_term
+  @spec ge(:term.t, number) :: :term.t
   def ge(term, value) do
     :term.new(type: :'GE', args: [term, expr(value)])
   end
 
-  @spec lt(ql_term, number) :: ql_term
+  @spec lt(:term.t, number) :: :term.t
   def lt(term, value) do
     :term.new(type: :'LT', args: [term, expr(value)])
   end
 
-  @spec le(ql_term, number) :: ql_term
+  @spec le(:term.t, number) :: :term.t
   def le(term, value) do
     :term.new(type: :'LE', args: [term, expr(value)])
   end
 
-  @spec not_(ql_term) :: ql_term
+  @spec not_(:term.t) :: :term.t
   def not_(term) do
     :term.new(type: :'NOT', args: [term])
   end
 
-  @spec expr(Dict.t | {any, any} | list | fun | ql_term) :: ql_term
+  @spec expr(expr_arg) :: :term.t | :term_assocpair.t
   def expr(item) when is_record(item, :term), do: Item
   def expr(item) when is_record(item, :term_assocpair), do: Item
-  def expr(doc) when is_record(doc, HashDict) do
+  def expr(doc) when is_record(doc, Dict) do
     optargs = Enum.map(doc, function(expr/1))
     :term.new(type: :'MAKE_OBJ', optargs: optargs)
   end
-  def expr({key, value}), do: term_assocpair(key, value)
+  def expr({key, value}), do: build_term_assocpair(key, value)
   def expr(items) when is_list(items) do
     make_array(items)
   end
   def expr(func) when is_function(func), do: func(func)
   def expr(value), do: :term.new(type: :'DATUM', datum: datum(value))
 
-  @spec make_array(list) :: ql_term
+  @spec make_array([expr_arg]) :: :term.t
   def make_array(items) when is_list(items) do
     args = lc i inlist items, do: expr(i)
     :term.new(type: :'MAKE_ARRAY', args: args)
@@ -194,16 +194,16 @@ defmodule Lexthink.AST do
   # @doc create Datums from the four basic types.  Arrays and objects
   # are created via MAKE_ARRAY and MAKE_OBJ on the server since it's
   # cheaper that way.
-  @spec datum(:null | boolean | number | binary) :: :datum
+  @spec datum(datum_arg) :: :datum.t
   defp datum(:null), do: :datum.new(type: :'R_NULL')
   defp datum(v) when is_boolean(v), do: :datum.new(type: :'R_BOOL', r_bool: v)
   defp datum(v) when is_number(v), do: :datum.new(type: :'R_NUM', r_num: v)
   defp datum(v) when is_binary(v), do: :datum.new(type: :'R_STR', r_str: v)
 
-  @spec var(integer) :: ql_term
+  @spec var(integer) :: :term.t
   def var(n), do: :term.new(type: :'VAR', args: expr(n))
 
-  @spec func(fun) :: ql_term
+  @spec func(fun) :: :term.t
   def func(func) do
       {_, arity} = :erlang.fun_info(func, :arity)
       arg_count_list = :lists.seq(1, arity)
@@ -242,16 +242,16 @@ defmodule Lexthink.AST do
   defp ivar_scan(_), do: :false
 
   @private
-  @spec term_assocpair(binary | atom, any) :: :term_assocpair
-  defp term_assocpair(key, value) when is_atom(key) do
-    term_assocpair(atom_to_binary(key, :utf8), value)
+  @spec build_term_assocpair(binary | atom, expr_arg) :: :term_assocpair.t
+  defp build_term_assocpair(key, value) when is_atom(key) do
+    build_term_assocpair(atom_to_binary(key, :utf8), value)
   end
-  defp term_assocpair(key, value) when is_binary(key) do
+  defp build_term_assocpair(key, value) when is_binary(key) do
     :term_assocpair.new(key: key, val: expr(value))
   end
 
   @private
-  @spec option_term({atom | binary, atom | binary}) :: :term_assocpair
+  @spec option_term({atom | binary, atom | binary}) :: :term_assocpair.t
   defp option_term({key, value}) when is_atom(value) do
     option_term({key, atom_to_binary(value, :utf8)})
   end
@@ -259,6 +259,6 @@ defmodule Lexthink.AST do
     option_term({atom_to_binary(key, :utf8), value})
   end
   defp option_term({key, value}) when is_binary(key) and is_binary(value) do
-    term_assocpair(key, value)
+    build_term_assocpair(key, value)
   end
 end

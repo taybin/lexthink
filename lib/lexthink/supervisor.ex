@@ -6,7 +6,8 @@ defmodule Lexthink.Supervisor do
   end
 
   def init([]) do
-    :ets.new(Lexthink.Server, [:ordered_set, :public, :named_table, {:read_concurrency, :true}])
+    Lexthink.Server = :ets.new(Lexthink.Server, [:ordered_set, :public, :named_table, {:read_concurrency, :true}])
+
     children = [
       # Define workers and child supervisors to be supervised
       worker(Lexthink.Server, [])

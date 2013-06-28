@@ -1,6 +1,10 @@
 defmodule Lexthink do
   use Application.Behaviour
 
+  @type response :: success | error
+  @type success :: {:ok, [any]}
+  @type error :: {:error, binary, atom, any}
+
   #@equiv add_pool(any(), pos_integer(), [{address, "localhost"}, {port, 28015}, {database, <<"test">>}])
   @spec add_pool(any, pos_integer) :: :ok
   def add_pool(ref, n_workers) when n_workers > 0 do
@@ -10,7 +14,7 @@ defmodule Lexthink do
   @doc """
   Start a pool of connections to a database.
   """
-  #@spec add_pool(any, pos_integer, [connect_options()]) -> ok.
+  @spec add_pool(any, pos_integer, Keyword.t) :: :ok
   def add_pool(ref, n_workers, opts) when n_workers > 0 do
       :ok = Lexthink.Server.add_pool(ref)
       {:ok, sup_pid} = :supervisor.start_child(Lexthink.Supervisor,
@@ -40,7 +44,7 @@ defmodule Lexthink do
       Enum.map(worker_pids, fn pid -> Lexthink.Worker.use(pid, db) end)
   end
 
-  @spec run(:term, any) :: :response
+  @spec run(:term.t, any) :: response
   def run(term, ref) do
     worker_pid = Lexthink.Server.get_worker(ref)
     Lexthink.Worker.query(worker_pid, term)
