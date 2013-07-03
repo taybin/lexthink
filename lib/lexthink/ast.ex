@@ -1,6 +1,7 @@
 defmodule Lexthink.AST do
   @typep datum_arg :: :null | boolean | number | binary
   @typep expr_arg :: Dict.t | {any, any} | [expr_arg] | fun | atom | :term.t | :term_assocpair.t | datum_arg
+  @typep key_arg :: binary | number | atom
 
   @spec db_create(binary) :: :term.t
   def db_create(name), do: :term.new(type: :'DB_CREATE', args: expr(name))
@@ -85,16 +86,44 @@ defmodule Lexthink.AST do
     :term.new(type: :'INSERT', args: args, optargs: optargs)
   end
 
-  @spec get(:term.t, binary | number) :: :term.t
+  @spec get(:term.t, key_arg) :: :term.t
   def get(table, key) when is_record(table, :term) and (is_binary(key) or is_number(key)) do
     args = [table, expr(key)]
     :term.new(type: :'GET', args: args)
   end
 
-  @spec update(:term.t, Dict.t | fun) :: :term.t
-  def update(selection, data) do
+  @spec get_all(:term.t, key_arg, Keyword.t) :: :term.t
+  def get_all(table, key, options // []) when is_record(table, :term) do
+    args = [table, expr(key)]
+    optargs = lc opt inlist options, do: option_term(opt)
+    :term.new(type: :'GET_ALL', args: args, optargs: optargs)
+  end
+
+  @spec between(:term.t, key_arg, key_arg, Keyword.t) :: :term.t
+  def between(:term[] = selection, lower_key, upper_key, options // []) do
+    args = [selection, expr(lower_key), expr(upper_key)]
+    optargs = lc opt inlist options, do: option_term(opt)
+    :term.new(type: :'BETWEEN', args: args, optargs: optargs)
+  end
+
+  @spec update(:term.t, Dict.t | fun, Keyword.t) :: :term.t
+  def update(selection, data, options // []) do
     args = [selection, func_wrap(data)]
-    :term.new(type: :'UPDATE', args: args)
+    optargs = lc opt inlist options, do: option_term(opt)
+    :term.new(type: :'UPDATE', args: args, optargs: optargs)
+  end
+
+  @spec replace(:term.t, Dict.t | fun, Keyword.t) :: :term.t
+  def replace(selection, data, options // []) do
+    args = [selection, func_wrap(data)]
+    optargs = lc opt inlist options, do: option_term(opt)
+    :term.new(type: :'REPLACE', args: args, optargs: optargs)
+  end
+
+  @spec delete(:term.t, Keyword.t) :: :term.t
+  def delete(selection, options // []) do
+    optargs = lc opt inlist options, do: option_term(opt)
+    :term.new(type: :'DELETE', optargs: optargs)
   end
 
   @spec row() :: :term.t
@@ -223,7 +252,7 @@ defmodule Lexthink.AST do
 
   @private
   @spec func_wrap(expr_arg) :: :term.t | :term_assocpair.t
-  def func_wrap(data) do
+  defp func_wrap(data) do
     value = expr(data)
     case ivar_scan(value) do
       true -> func(fn(_) -> value end)
