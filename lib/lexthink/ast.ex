@@ -73,9 +73,14 @@ defmodule Lexthink.AST do
     :term.new(type: :'TABLE', args: [db, expr(name)], optargs: optargs)
   end
 
-  @spec insert(:term.t, Dict.t, Keyword.t) :: :term.t
-  def insert(table, data, options // []) when is_record(table, :term) do
-    args = [table, lc d inlist data, do: expr(d)]
+  @spec insert(:term.t, Dict.t | [Dict.t]) :: :term.t
+  def insert(table, data) when is_record(table, :term) do
+    insert(table, data, [])
+  end
+
+  @spec insert(:term.t, Dict.t | [Dict.t], Keyword.t) :: :term.t
+  def insert(table, data, options) when is_record(table, :term) and is_list(data) do
+    args = [table, expr(data)]
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'INSERT', args: args, optargs: optargs)
   end
@@ -173,15 +178,15 @@ defmodule Lexthink.AST do
   @spec expr(expr_arg) :: :term.t | :term_assocpair.t
   def expr(item) when is_record(item, :term), do: Item
   def expr(item) when is_record(item, :term_assocpair), do: Item
-  def expr(doc) when is_record(doc, Dict) do
-    optargs = Enum.map(doc, function(expr/1))
+  def expr(doc) when is_record(doc, HashDict) do
+    optargs = Enum.map(doc, expr(&1))
     :term.new(type: :'MAKE_OBJ', optargs: optargs)
   end
   def expr({key, value}), do: build_term_assocpair(key, value)
   def expr(items) when is_list(items) do
     make_array(items)
   end
-  def expr(func) when is_function(func), do: func(func)
+  def expr(f) when is_function(f), do: func(f)
   def expr(value), do: :term.new(type: :'DATUM', datum: datum(value))
 
   @spec make_array([expr_arg]) :: :term.t
@@ -258,7 +263,7 @@ defmodule Lexthink.AST do
   defp option_term({key, value}) when is_atom(key) do
     option_term({atom_to_binary(key, :utf8), value})
   end
-  defp option_term({key, value}) when is_binary(key) and is_binary(value) do
+  defp option_term({key, value}) do
     build_term_assocpair(key, value)
   end
 end
