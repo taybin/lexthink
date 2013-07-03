@@ -218,31 +218,25 @@ defmodule Lexthink.AST do
   end
 
   @private
-  defp func_wrap(data) do
-      value = expr(data)
-      case ivar_scan(value) do
-          true -> func(fn(_) -> value end)
-          false -> value
-      end
+  @spec func_wrap(expr_arg) :: :term.t | :term_assocpair.t
+  def func_wrap(data) do
+    value = expr(data)
+    case ivar_scan(value) do
+      true -> func(fn(_) -> value end)
+      false -> value
+    end
   end
 
   # Scan for IMPLICIT_VAR or JS
   @private
-  @spec ivar_scan(any) :: boolean
+  @spec ivar_scan(:term.t | :term_assocpair.t | [:term.t] | [:term_assocpair.t]) :: boolean
   defp ivar_scan(:term[type: :'IMPLICIT_VAR']), do: :true
+  defp ivar_scan(list) when is_list(list), do: Enum.any?(list, ivar_scan(&1))
   defp ivar_scan(term) when is_record(term, :term) do
-      case is_list(term.args) do
-          true -> Enum.any?(term.args, function(ivar_scan/1))
-          false -> ivar_scan(term.args)
-      end
-      or
-      case is_list(term.optargs) do
-          true -> Enum.any?(term.optargs, function(ivar_scan/1))
-          false -> ivar_scan(term.args)
-      end
+    ivar_scan(term.args) or ivar_scan(term.optargs)
   end
   defp ivar_scan(term_pair) when is_record(term_pair, :term_assocpair) do
-      ivar_scan(term_pair)
+    ivar_scan(term_pair.val)
   end
   defp ivar_scan(_), do: :false
 
