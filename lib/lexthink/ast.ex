@@ -1,6 +1,6 @@
 defmodule Lexthink.AST do
   @typep datum_arg :: :null | boolean | number | binary
-  @typep expr_arg :: Dict.t | {any, any} | [expr_arg] | fun | :term.t | :term_assocpair.t | datum_arg
+  @typep expr_arg :: Dict.t | {any, any} | [expr_arg] | fun | atom | :term.t | :term_assocpair.t | datum_arg
 
   @spec db_create(binary) :: :term.t
   def db_create(name), do: :term.new(type: :'DB_CREATE', args: expr(name))
@@ -79,7 +79,7 @@ defmodule Lexthink.AST do
   end
 
   @spec insert(:term.t, Dict.t | [Dict.t], Keyword.t) :: :term.t
-  def insert(table, data, options) when is_record(table, :term) and is_list(data) do
+  def insert(table, data, options) when is_record(table, :term) do
     args = [table, expr(data)]
     optargs = lc opt inlist options, do: option_term(opt)
     :term.new(type: :'INSERT', args: args, optargs: optargs)
@@ -87,12 +87,14 @@ defmodule Lexthink.AST do
 
   @spec get(:term.t, binary | number) :: :term.t
   def get(table, key) when is_record(table, :term) and (is_binary(key) or is_number(key)) do
-    :term.new(type: :'GET', args: [table, expr(key)])
+    args = [table, expr(key)]
+    :term.new(type: :'GET', args: args)
   end
 
   @spec update(:term.t, Dict.t | fun) :: :term.t
   def update(selection, data) do
-    :term.new(type: :'UPDATE', args: [selection, func_wrap(data)])
+    args = [selection, func_wrap(data)]
+    :term.new(type: :'UPDATE', args: args)
   end
 
   @spec row() :: :term.t
@@ -100,7 +102,8 @@ defmodule Lexthink.AST do
 
   @spec getattr(:term.t, binary) :: :term.t
   def getattr(term, attr) do
-    term.new(type: :'GETATTR', args: [term, expr(attr)])
+    args = [term, expr(attr)]
+    :term.new(type: :'GETATTR', args: args)
   end
 
   #%% Math and Logic Operations
@@ -176,8 +179,8 @@ defmodule Lexthink.AST do
   end
 
   @spec expr(expr_arg) :: :term.t | :term_assocpair.t
-  def expr(item) when is_record(item, :term), do: Item
-  def expr(item) when is_record(item, :term_assocpair), do: Item
+  def expr(item) when is_record(item, :term), do: item
+  def expr(item) when is_record(item, :term_assocpair), do: item
   def expr(doc) when is_record(doc, HashDict) do
     optargs = Enum.map(doc, expr(&1))
     :term.new(type: :'MAKE_OBJ', optargs: optargs)
@@ -187,6 +190,7 @@ defmodule Lexthink.AST do
     make_array(items)
   end
   def expr(f) when is_function(f), do: func(f)
+  def expr(a) when is_atom(a), do: expr(atom_to_binary(a))
   def expr(value), do: :term.new(type: :'DATUM', datum: datum(value))
 
   @spec make_array([expr_arg]) :: :term.t
