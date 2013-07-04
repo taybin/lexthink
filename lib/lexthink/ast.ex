@@ -129,10 +129,10 @@ defmodule Lexthink.AST do
   @spec row() :: :term.t
   def row(), do: :term.new(type: :'IMPLICIT_VAR')
 
-  @spec getattr(:term.t, binary) :: :term.t
-  def getattr(term, attr) do
+  @spec get_field(:term.t, binary) :: :term.t
+  def get_field(term, attr) do
     args = [term, expr(attr)]
-    :term.new(type: :'GETATTR', args: args)
+    :term.new(type: :'GET_FIELD', args: args)
   end
 
   #%% Math and Logic Operations
@@ -219,7 +219,6 @@ defmodule Lexthink.AST do
     make_array(items)
   end
   def expr(f) when is_function(f), do: func(f)
-  def expr(a) when is_atom(a), do: expr(atom_to_binary(a))
   def expr(value), do: :term.new(type: :'DATUM', datum: datum(value))
 
   @spec make_array([expr_arg]) :: :term.t
@@ -228,7 +227,6 @@ defmodule Lexthink.AST do
     :term.new(type: :'MAKE_ARRAY', args: args)
   end
 
-  # @private
   # @doc create Datums from the four basic types.  Arrays and objects
   # are created via MAKE_ARRAY and MAKE_OBJ on the server since it's
   # cheaper that way.
@@ -237,6 +235,7 @@ defmodule Lexthink.AST do
   defp datum(v) when is_boolean(v), do: :datum.new(type: :'R_BOOL', r_bool: v)
   defp datum(v) when is_number(v), do: :datum.new(type: :'R_NUM', r_num: v)
   defp datum(v) when is_binary(v), do: :datum.new(type: :'R_STR', r_str: v)
+  defp datum(v) when is_atom(v), do: :datum.new(type: :'R_STR', r_str: v)
 
   @spec var(integer) :: :term.t
   def var(n), do: :term.new(type: :'VAR', args: expr(n))
@@ -250,7 +249,6 @@ defmodule Lexthink.AST do
       :term.new(type: :'FUNC', args: args)
   end
 
-  @private
   @spec func_wrap(expr_arg) :: :term.t | :term_assocpair.t
   defp func_wrap(data) do
     value = expr(data)
@@ -261,7 +259,6 @@ defmodule Lexthink.AST do
   end
 
   # Scan for IMPLICIT_VAR or JS
-  @private
   @spec ivar_scan(:term.t | :term_assocpair.t | [:term.t] | [:term_assocpair.t]) :: boolean
   defp ivar_scan(:term[type: :'IMPLICIT_VAR']), do: :true
   defp ivar_scan(list) when is_list(list), do: Enum.any?(list, ivar_scan(&1))
@@ -273,7 +270,6 @@ defmodule Lexthink.AST do
   end
   defp ivar_scan(_), do: :false
 
-  @private
   @spec build_term_assocpair(binary | atom, expr_arg) :: :term_assocpair.t
   defp build_term_assocpair(key, value) when is_atom(key) do
     build_term_assocpair(atom_to_binary(key, :utf8), value)
@@ -282,7 +278,6 @@ defmodule Lexthink.AST do
     :term_assocpair.new(key: key, val: expr(value))
   end
 
-  @private
   @spec option_term({atom | binary, atom | binary}) :: :term_assocpair.t
   defp option_term({key, value}) when is_atom(value) do
     option_term({key, atom_to_binary(value, :utf8)})
