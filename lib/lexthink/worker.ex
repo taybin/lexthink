@@ -1,9 +1,9 @@
 defmodule Lexthink.Worker do
   use GenServer.Behaviour
 
-  defrecord State, socket: nil, database: nil, token: 1
+  @version 0x723081e1 # v02 magic number from ql2.proto
 
-  defp __RETHINKDB_VERSION__, do: 0x723081e1 # v_02 magic number from ql2.proto
+  defrecord State, socket: nil, database: nil, token: 1
 
   @spec start_link(any, list) :: any
   def start_link(ref, opts) do
@@ -89,7 +89,8 @@ defmodule Lexthink.Worker do
       {:ok, Ql2.Util.datum_value(datum)}
   end
   defp handle_response(:response[type: :'SUCCESS_SEQUENCE', response: data]) do
-      {:ok, lc d inlist data, do: Ql2.Util.datum_value(d)}
+      response = lc d inlist data, do: Ql2.Util.datum_value(d)
+      {:ok, response}
   end
   defp handle_response(:response[type: :'SUCCESS_PARTIAL', response: [datum]]) do
       {:ok, Ql2.Util.datum_value(datum)}
@@ -111,7 +112,7 @@ defmodule Lexthink.Worker do
   @spec login(binary, port) :: :ok | {:error, binary}
   defp login(auth_key, socket) do
       key_length = iolist_size(auth_key)
-      :ok = :gen_tcp.send(socket, :binary.encode_unsigned(__RETHINKDB_VERSION__, :little))
+      :ok = :gen_tcp.send(socket, :binary.encode_unsigned(@version, :little))
       :ok = :gen_tcp.send(socket, [<<key_length :: [size(32), little]>>, auth_key])
       {:ok, response} = read_until_null(socket)
       case response == <<"SUCCESS",0>> do

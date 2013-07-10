@@ -51,6 +51,30 @@ defmodule Lexthink.AST do
     :term.new(type: :'TABLE_LIST', args: db)
   end
 
+  @spec index_create(:term.t, binary) :: :term.t
+  def index_create(table, name) do
+    args = [table, expr(name)]
+    :term.new(type: :'INDEX_CREATE', args: args)
+  end
+
+  @spec index_create(:term.t, binary, fun) :: :term.t
+  def index_create(table, name, fun) do
+    args = [table, expr(name), expr(fun)]
+    :term.new(type: :'INDEX_CREATE', args: args)
+  end
+
+  @spec index_drop(:term.t, binary) :: :term.t
+  def index_drop(table, name) do
+    args = [table, expr(name)]
+    :term.new(type: :'INDEX_DROP', args: args)
+  end
+
+  @spec index_list(:term.t) :: :term.t
+  def index_list(table) do
+    args = table
+    :term.new(type: :'INDEX_LIST', args: args)
+  end
+
   #%% @doc Specify a DB.  Must be first operation in query list
   #%% Optional if a default database has been specified via
   #%% @see lethink:use/2
@@ -122,8 +146,9 @@ defmodule Lexthink.AST do
 
   @spec delete(:term.t, Keyword.t) :: :term.t
   def delete(selection, options // []) do
+    args = selection
     optargs = lc opt inlist options, do: option_term(opt)
-    :term.new(type: :'DELETE', optargs: optargs)
+    :term.new(type: :'DELETE', args: args, optargs: optargs)
   end
 
   @spec row() :: :term.t
@@ -235,7 +260,9 @@ defmodule Lexthink.AST do
   defp datum(v) when is_boolean(v), do: :datum.new(type: :'R_BOOL', r_bool: v)
   defp datum(v) when is_number(v), do: :datum.new(type: :'R_NUM', r_num: v)
   defp datum(v) when is_binary(v), do: :datum.new(type: :'R_STR', r_str: v)
-  defp datum(v) when is_atom(v), do: :datum.new(type: :'R_STR', r_str: v)
+  defp datum(v) when is_atom(v) do
+    :datum.new(type: :'R_STR', r_str: atom_to_binary(v))
+  end
 
   @spec var(integer) :: :term.t
   def var(n), do: :term.new(type: :'VAR', args: expr(n))
