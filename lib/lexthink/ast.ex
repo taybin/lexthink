@@ -111,12 +111,13 @@ defmodule Lexthink.AST do
   end
 
   @spec get(:term.t, key_arg) :: :term.t
-  def get(table, key) when is_record(table, :term) and (is_binary(key) or is_number(key)) do
+  def get(table, key) when is_record(table, :term) and
+                          (is_binary(key) or is_number(key)) do
     args = [table, expr(key)]
     :term.new(type: :'GET', args: args)
   end
 
-  @spec get_all(:term.t, key_arg, Keyword.t) :: :term.t
+  @spec get_all(:term.t, key_arg | [key_arg], Keyword.t) :: :term.t
   def get_all(table, key, options // []) when is_record(table, :term) do
     args = [table, expr(key)]
     optargs = lc opt inlist options, do: option_term(opt)
