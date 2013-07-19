@@ -16,8 +16,9 @@
 defmodule Lexthink.Server do
   use GenServer.Behaviour
 
-  defrecord State,
-      pools: [] :: [pid]
+  defrecord State, pools: [] do
+    record_type pools: [pid]
+  end
 
   @spec start_link() :: {:ok, pid}
   def start_link do

@@ -4,6 +4,7 @@ defmodule Lexthink.Mixfile do
   def project do
     [ app: :lexthink,
       version: "0.0.1",
+      elixir: "~> 0.10.0",
       compilers: [:protobuffs, :elixir, :app],
       deps: deps ]
   end
